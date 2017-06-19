@@ -22,7 +22,8 @@ TMP=/work/workl/pjamet
 . /opt/intel/composerxe/bin/compilervars.sh intel64
 ifort -v
 
-JOB=transAmpTot_ref
+JOB=transAmp_ref
+JOB1=transAmpTot_ref
 JOB2=transAmpM_ref
 mkdir -p $TMP/$JOB
 cp 11_ref.dat $TMP/$JOB/11.dat
@@ -37,9 +38,9 @@ cd $TMP/$JOB
 cp $DIREXE/$EXE .
 ls -l $DIREXE/$EXE
 
-{ time ./$EXE < fileNames.In ; } 2> cpu 
+{ time ./$EXE < ./$JOB.In ; } 2> cpu 
 
-cp transAmp.dat $DIR/$JOB.dat
+cp transAmp.dat $DIR/$JOB1.dat
 cp transAmp2.dat $DIR/$JOB2.dat
 
 
