@@ -5,46 +5,53 @@ c#    c - call crossAmp in transElt                                    #
 c#    a - crossAmp subroutine                                          #
 c#    g - grabData subroutine                                          #
 c#######################################################################
+      include 'input.f'
+c
       program transElt
 c
       real(8) :: res, deltaE, tmp
       double precision :: f3j, f6j
-      real(8) :: jTot, jpTot, mTot, j, jp, l
+      real(8) :: mTot, j, jp, l
       real(8), dimension(:,:,:), allocatable :: amp
       integer :: jStep, jpstep, lStep, eStep, epStep, nEig, nEigp, nR
       integer :: param(4,7), paramp(4,7), i, mTStep
       real(8), allocatable :: eig(:), eigp(:)
       integer, allocatable :: ke(:,:), kep(:,:) 
+      character(14) :: name11, name12, name21, name22
+      use m_input
 c
+      name11 = '_kei1_kep1.dat'
+      name12 = '_kei1_kep2.dat'
+      name21 = '_kei2_kep1.dat'
+      name22 = '_kei2_kep2.dat'
       open(16,file='transAmp.dat')
       open(17,file='transAmp2.dat')
-      open(11,file='11.dat')
-      open(12,file='12.dat')
-      open(13,file='21.dat')
-      open(14,file='22.dat')
+      open(11,file=trim(fileName) // trim(name11))
+      open(12,file=trim(fileName) // trim(name12))
+      open(13,file=trim(fileName) // trim(name21))
+      open(14,file=trim(fileName) // trim(name22))
       do i =1,4
          read(10 + i,*)
          read(10 + i,*) param(i,:)
       enddo
       nEig = param(1,7)+param(2,7)+param(3,7)+param(4,7)
       nR = param(1,4)
-      jTot = dfloat(param(1,1))
       do i =1,4
          close(10+i)
       enddo
 
-      open(11,file='11p.dat')
-      open(12,file='12p.dat')
-      open(13,file='21p.dat')
-      open(14,file='22p.dat')
+      open(21,file=trim(fileNamep) // trim(name11))
+      open(22,file=trim(fileNamep) // trim(name12))
+      open(23,file=trim(fileNamep) // trim(name21))
+      open(24,file=trim(fileNamep) // trim(name22))
       do i =1,4
-         read(10 + i,*)
-         read(10 + i,*) paramp(i,:)
+         read(20 + i,*)
+         read(20 + i,*) paramp(i,:)
       enddo
       nEigp = paramp(1,7)+paramp(2,7)+paramp(3,7)+paramp(4,7)
       jpTot = dfloat(paramp(1,1))
       do i =1,4
-         close(10+i)
+         close(20+i)
       enddo
 
       allocate(eig(nEig))
@@ -52,7 +59,7 @@ c
       allocate(ke(nEig,2))
       allocate(kep(nEigp,2))
       
-      allocate(amp(0:25,0:25+int(jTot),0:25))
+      allocate(amp(0:25,0:25+jTot,0:25))
 
       write(16,*) '             E',"             E'",'        Delta E',
      &'    <psi|D|psi>'
@@ -63,24 +70,24 @@ c
       write(17,*) eStep
       do epStep = 1, nEigp
          res = 0.d0
-         call crossAmp(jTot,jpTot,eStep,epStep,nR,nEig,nEigp,amp,deltaE,
-     &         eig, eigp, ke, kep)
-         do mTStep = -int(min(jTot,jpTot)), int(min(jTot,jpTot))
+         call crossAmp(dfloat(jTot),dfloat(jpTot),eStep,epStep,nR,nEig,
+     &                 nEigp,amp,deltaE,eig, eigp, ke, kep)
+         do mTStep = -(min(jTot,jpTot), (min(jTot,jpTot)
          mTot = dfloat(mTStep)
          tmp = 0.d0
             do jStep = 0, 24
                j = dfloat(jStep)
-               do lStep = abs(int(jTot)-jStep), int(jTot) + jStep
+               do lStep = abs(jTot-jStep, jTot + jStep)
                   l = dfloat(lStep)
                   do jpStep = abs(jStep - 1), jStep + 1,2
                      jp = dfloat(jpStep)
                      tmp = tmp + amp(jStep, lStep,
-     &               jpStep)*canalElt(jTot, jpTot, mTot, j, jp, l)
+     &     jpStep)*canalElt(dfloat(jTot), dfloat(jpTot), mTot, j, jp, l)
                   enddo
                enddo
             enddo
-            tmp = tmp*dsqrt((2*jpTot+1)*(2*jTot+1))*(-1.d0)**mTot*
-     &            f3j(jpTot,1.d0, jTot, -1.d0*mTot, 0.d0, mTot)
+            tmp = tmp*dsqrt((2.d0*jpTot+1)*(2.d0*jTot+1))*(-1.d0)**mTot*
+     &     f3j(dfloat(jpTot),1.d0, dfloat(jTot), -1.d0*mTot, 0.d0, mTot)
       if (dabs(tmp) .gt. 1.d-8) then
       write(17,'(4f15.8,i5)') eig(eStep), eigp(epStep),deltaE,tmp,mTStep
       end if
