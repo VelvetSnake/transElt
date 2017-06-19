@@ -5,6 +5,7 @@
  here=`pwd`
  echo $here
  refqsub="s_Ne_amp_ref"
+ refinput="fileName_ref.In"
  numberlist="numbersListAmp"
  element="Ne"
  ntot=11
@@ -13,8 +14,6 @@ i=1
 while [ $i -le `expr $ntot - 1` ]
 do
 j=`expr $i + 1`
-#if [ $j -le $ntot ] 
-#then
 ii=`expr $i `
 jj=`expr $j `
 numjtot=`awk -v v1=$ii '{if(NR==v1){print $1}}' $numberlist`
@@ -32,32 +31,36 @@ oep=C2H2-${element}_waveDeco_j${numjptot}_kei1_kep2
 eop=C2H2-${element}_waveDeco_j${numjptot}_kei2_kep1
 eep=C2H2-${element}_waveDeco_j${numjptot}_kei2_kep2
 job=s_${element}_amp_${numjtot}_${numjptot}
+inp=C2H2-${element}_j${numjtot}_jp${numjptot}
+namef=C2H2-${element}_waveDeco_j${numjtot}
+namefp=C2H2-${element}_waveDeco_j${numjptot}
 
 #
 #Create script
-awk -v v1=$job -v v2=$namea -v v3=$namem -v v4=$oo -v v5=$oe -v v6=$eo -v v7=$ee -v v8=$oop -v v9=$oep -v v10=$eop -v v11=$eep '{
+awk -v v1=$job -v v2=$namea -v v3=$namem -v v4=$oo -v v5=$oe -v v6=$eo -v v7=$ee -v v8=$oop -v v9=$oep -v v10=$eop -v v11=$eep -v v12=$inp '{
           if(NR==7) {print "#$ -N " v1 }
-            else {if (NR==25) {print "JOB="v2 }
-            else {if (NR==26) {print "JOB2="v3 }
-            else {if (NR==28) {print "cp "v4".dat $TMP/$JOB/"v4".dat" }
-            else {if (NR==29) {print "cp "v5".dat $TMP/$JOB/"v5".dat" }
-            else {if (NR==30) {print "cp "v6".dat $TMP/$JOB/"v6".dat" }
-            else {if (NR==31) {print "cp "v7".dat $TMP/$JOB/"v7".dat" }
-            else {if (NR==32) {print "cp "v8".dat $TMP/$JOB/"v8"p.dat" }
-            else {if (NR==33) {print "cp "v9".dat $TMP/$JOB/"v9"p.dat" }
-            else {if (NR==34) {print "cp "v10".dat $TMP/$JOB/"v10"p.dat" }
-            else {if (NR==35) {print "cp "v11".dat $TMP/$JOB/"v11"p.dat" }
-            else {print $0}}}}}}}}}}}}' $refqsub > $job
+            else {if (NR==25) {print "JOB="v12 }
+            else {if (NR==26) {print "JOB1="v2 }
+            else {if (NR==27) {print "JOB2="v3 }
+            else {if (NR==29) {print "cp "v4".dat $TMP/$JOB/"v4".dat" }
+            else {if (NR==30) {print "cp "v5".dat $TMP/$JOB/"v5".dat" }
+            else {if (NR==31) {print "cp "v6".dat $TMP/$JOB/"v6".dat" }
+            else {if (NR==32) {print "cp "v7".dat $TMP/$JOB/"v7".dat" }
+            else {if (NR==33) {print "cp "v8".dat $TMP/$JOB/"v8".dat" }
+            else {if (NR==34) {print "cp "v9".dat $TMP/$JOB/"v9".dat" }
+            else {if (NR==35) {print "cp "v10".dat $TMP/$JOB/"v10".dat" }
+            else {if (NR==36) {print "cp "v11".dat $TMP/$JOB/"v11".dat" }
+            else {print $0}}}}}}}}}}}}}' $refqsub > $job
 #
 # fileNames input
-awk -v v1=$oo -v v2=$oe -v v3=$eo -v v4=$ee -v v5=$oop -v v6=$oep -v v7=$eop -v v8=$eep '{
-          if(NR==1) {print $v1".dat" } 
-            else {if(NR==1) {print $v1".dat" } 
-            else {if (NR==6) {print "   jtot="v2", kei="v3", kep="v4"," }
-            else {print $0}}}' $refvriinput > $namei.In
+awk -v v1=$job -v v2=$namef -v v3=$namefp -v v4=$ii -v v5=$jj '{
+          if(NR==3) {print "   fileName=\""v2"\"" } 
+            else {if(NR==4) {print "   fileNamep=\""v3"\"" } 
+	    else {if(NR==5) {print "jTot="v4}
+	    else {if(NR==6) {print "jpTot="v5}
+            else {print $0}}}}}' $refinput > $inp.In
 
 # loop indices update
  i=`expr $i + 1`
 #fi
 done
-

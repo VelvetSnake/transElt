@@ -1,49 +1,65 @@
 c#######################################################################
-c#                                MARKS                                #
+c#                              VIM MARKS                              #
 c#######################################################################
 c#    c - call crossAmp in transElt                                    #
 c#    a - crossAmp subroutine                                          #
 c#    g - grabData subroutine                                          #
 c#######################################################################
-      include 'input.f'
+c
+c#######################################################################
+c#                                TODO                                 #
+c#######################################################################
+c#    In main : direct call to grabData                                #
+c#    Change crossAmp according to that                                #
+c#    Optimize by not computing trivial zeros + general optimization   #      
+c#    Add implicit none if possible                                    #
+c#######################################################################
+      include 'inputs.f'
 c
       program transElt
+      use m_input
 c
       real(8) :: res, deltaE, tmp
       double precision :: f3j, f6j
       real(8) :: mTot, j, jp, l
       real(8), dimension(:,:,:), allocatable :: amp
       integer :: jStep, jpstep, lStep, eStep, epStep, nEig, nEigp, nR
-      integer :: param(4,7), paramp(4,7), i, mTStep
+      integer :: param(4,7), paramp(4,7), i, mTStep,iin
       real(8), allocatable :: eig(:), eigp(:)
       integer, allocatable :: ke(:,:), kep(:,:) 
       character(14) :: name11, name12, name21, name22
-      use m_input
+      call reader
 c
+      param = 0.d0
+      paramp = 0.d0
       name11 = '_kei1_kep1.dat'
       name12 = '_kei1_kep2.dat'
       name21 = '_kei2_kep1.dat'
       name22 = '_kei2_kep2.dat'
       open(16,file='transAmp.dat')
       open(17,file='transAmp2.dat')
-      open(11,file=trim(fileName) // trim(name11))
-      open(12,file=trim(fileName) // trim(name12))
-      open(13,file=trim(fileName) // trim(name21))
-      open(14,file=trim(fileName) // trim(name22))
-      do i =1,4
+      iin = 3
+      if (jtot .ne. 0) then
+         open(11,file=fileName // name11)
+         open(12,file=fileName // name12)
+         iin = 1
+      end if
+      open(13,file=fileName // name21)
+      open(14,file=fileName // name22)
+      do i =iin,4
          read(10 + i,*)
          read(10 + i,*) param(i,:)
       enddo
       nEig = param(1,7)+param(2,7)+param(3,7)+param(4,7)
-      nR = param(1,4)
-      do i =1,4
+      nR = param(3,4)
+      do i =iin,4
          close(10+i)
       enddo
 
-      open(21,file=trim(fileNamep) // trim(name11))
-      open(22,file=trim(fileNamep) // trim(name12))
-      open(23,file=trim(fileNamep) // trim(name21))
-      open(24,file=trim(fileNamep) // trim(name22))
+      open(21,file=fileNamep // name11)
+      open(22,file=fileNamep // name12)
+      open(23,file=fileNamep // name21)
+      open(24,file=fileNamep // name22)
       do i =1,4
          read(20 + i,*)
          read(20 + i,*) paramp(i,:)
@@ -69,15 +85,20 @@ c
       write(16,*) eStep
       write(17,*) eStep
       do epStep = 1, nEigp
+      print*, estep,epstep
          res = 0.d0
          call crossAmp(dfloat(jTot),dfloat(jpTot),eStep,epStep,nR,nEig,
-     &                 nEigp,amp,deltaE,eig, eigp, ke, kep)
-         do mTStep = -(min(jTot,jpTot), (min(jTot,jpTot)
+     &   nEigp,amp,deltaE,eig, eigp, ke, kep,fileName,fileNamep)
+         if (estep.eq.1 .and. epstep.eq.1) then
+            print*, eig
+            print*, eigp
+         end if
+         do mTStep = -1*min(jTot,jpTot), min(jTot,jpTot)
          mTot = dfloat(mTStep)
          tmp = 0.d0
             do jStep = 0, 24
                j = dfloat(jStep)
-               do lStep = abs(jTot-jStep, jTot + jStep)
+               do lStep = abs(jTot-jStep), jTot + jStep
                   l = dfloat(lStep)
                   do jpStep = abs(jStep - 1), jStep + 1,2
                      jp = dfloat(jpStep)
@@ -318,7 +339,7 @@ c
       end
 
       subroutine crossAmp(jTot, jpTot, e, ep, nR, nEig, nEigp, amp,
-     & deltaE, eig, eigp, ke, kep)
+     & deltaE, eig, eigp, ke, kep,fileName,fileNamep)
 c#######################################################################
 c#  Computes the crossed terms F_{J,M,j,l}(R)*F_{J',M',j',l'}(R) and   #
 c#    sums them over R using the weights w(R) and the 1/R² factor.     #
@@ -332,14 +353,15 @@ c#######################################################################
       integer :: rStep, jStep, lStep, jpStep, nR
       real(8), intent(inout) :: eig(nEig), eigp(nEigp)
       integer ::  ke(nEig,2), kep(nEigp,2) 
+      character(20), intent(in) :: fileName,fileNamep
 c
       allocate(rr(nR))
       allocate(ww(nR))
       allocate(uuNew(nEig,nR,0:25,0:25+int(jTot)))
       allocate(uuNewp(nEigp,nR,0:25,0:25+int(jpTot)))
 c
-      call grabData(.false.,rr, ww, eig, ke, uuNew, nR, nEig,jtot)
-      call grabData(.true.,rr, ww, eigp, kep, uuNewp,nR,nEigp,jptot)
+      call grabData(fileName,rr, ww, eig, ke, uuNew, nR, nEig,jtot)
+      call grabData(fileNamep,rr, ww, eigp, kep, uuNewp,nR,nEigp,jptot)
 c
       amp = 0.d0
 c
@@ -362,7 +384,7 @@ c
       deallocate(rr, ww,uunew,uunewp)
       end subroutine
 
-      subroutine grabData(prime,rr,ww,eig,ke,uuNew,nR,nEig,jTot)!,jmax)
+      subroutine grabData(fileName,rr,ww,eig,ke,uuNew,nR,nEig,jTot)
 c#######################################################################
 c#      Reads data from the 4 files with kei = 1,2 and kep = 1,2.      #
 c#######################################################################
@@ -374,29 +396,31 @@ c#######################################################################
       integer, intent(inout) :: ke(nEig,2)
       character(len=4) :: junk1
       real(8), intent(inout) :: rr(nR), ww(nR), eig(nEig)
-      logical :: prime
-      integer :: index(nEig), ketmp(nEig,2)
+      integer :: index(nEig), ketmp(nEig,2), iin
       real(8) :: eigtmp(nEig), uunewtmp(nEig,nR,0:25,0:25+int(jTot))
+      character(20) :: fileName
+      character(14) :: name11, name12, name21, name22
+      name11 = '_kei1_kep1.dat'
+      name12 = '_kei1_kep2.dat'
+      name21 = '_kei2_kep1.dat'
+      name22 = '_kei2_kep2.dat'
 c
-      if (prime) then
-         open(11,file='11p.dat')
-         open(12,file='12p.dat')
-         open(13,file='21p.dat')
-         open(14,file='22p.dat')
-      else
-         open(11,file='11.dat')
-         open(12,file='12.dat')
-         open(13,file='21.dat')
-         open(14,file='22.dat')
+      iin=3
+      if (int(jTot) .ne. 0) then
+         iin = 1
+         open(11,file=trim(fileName) // trim(name11))
+         open(12,file=fileName // name12)
       end if
-      do i =1,4
+         open(13,file=fileName // name21)
+         open(14,file=fileName // name22)
+      do i =iin,4
          read(10 + i,*)
          read(10 + i,*) param(i,:)
       enddo
 c
       uuNew = 0.d0
       c = 1
-      do i = 1, 4
+      do i = iin, 4
          read(10+i,*)
          read(10+i,*)
          do rStep = 1,nR
@@ -436,6 +460,9 @@ c
          eig(estep)         = eigtmp(estep)        
          ke(estep,:)        = ketmp(estep,:)
          uunew(estep,:,:,:) = uunewtmp(estep,:,:,:) 
+      end do
+      do i = iin,4
+         close(10+i)
       end do
       
       end subroutine
@@ -673,3 +700,10 @@ C
 C     All done
  
       END
+      subroutine reader
+      use   m_input
+      read  (5,input)
+c      write (6,input)
+      return
+      end
+
