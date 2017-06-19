@@ -1,5 +1,7 @@
  &input
 
-   file11="C2H2-Ne_waveDeco_j01_"
+   fileName="C2H2-Ne_waveDeco_j01_"
+   fileNamep="C2H2-Ne_waveDeco_j02_"
    jTot=1
+   jpTot=2
                                                                   &end
