@@ -1,0 +1,50 @@
+#$ -S /bin/bash
+#$ -j y
+#$ -cwd
+#$ -q main.q
+#$ -l arch=lx26-amd64
+#$ -l mem_available=2G
+#$ -N "s_Ne_amp_ref"
+
+echo `hostname`
+export OMP_NUM_THREADS=1
+export MKL_NUM_THREADS=1
+#
+
+#
+DIR=/work/work1/pjamet/Comp/Neon/Results/Amplitudes
+DIREXE=/ipr/home.ipr/pjamet/TransElt
+EXE=transElt.x
+
+
+TMP=/work/workl/pjamet 
+
+. /opt/intel/composerxe/bin/compilervars.sh intel64
+ifort -v
+
+JOB=transAmpTot_ref
+JOB2=transAmpM_ref
+mkdir -p $TMP/$JOB
+cp 11_ref.dat $TMP/$JOB/11.dat
+cp 12_ref.dat $TMP/$JOB/12.dat
+cp 21_ref.dat $TMP/$JOB/21.dat
+cp 22_ref.dat $TMP/$JOB/22.dat
+cp 11p_ref.dat $TMP/$JOB/11p.dat
+cp 12p_ref.dat $TMP/$JOB/12p.dat
+cp 21p_ref.dat $TMP/$JOB/21p.dat
+cp 22p_ref.dat $TMP/$JOB/22p.dat
+cd $TMP/$JOB
+cp $DIREXE/$EXE .
+ls -l $DIREXE/$EXE
+
+{ time ./$EXE < fileNames.In ; } 2> cpu 
+
+cp transAmp.dat $DIR/$JOB.dat
+cp transAmp2.dat $DIR/$JOB2.dat
+
+
+
+
+# Clean working directory
+cd ../ 
+rm -r $JOB 

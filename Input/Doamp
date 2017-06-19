@@ -1,0 +1,63 @@
+#! /bin/sh
+# create shell script + input files for lobatto SPECTRAL run
+#
+#
+ here=`pwd`
+ echo $here
+ refqsub="s_Ne_amp_ref"
+ numberlist="numbersListAmp"
+ element="Ne"
+ ntot=11
+
+i=1
+while [ $i -le `expr $ntot - 1` ]
+do
+j=`expr $i + 1`
+#if [ $j -le $ntot ] 
+#then
+ii=`expr $i `
+jj=`expr $j `
+numjtot=`awk -v v1=$ii '{if(NR==v1){print $1}}' $numberlist`
+numjptot=`awk -v v1=$jj '{if(NR==v1){print $1}}' $numberlist`
+
+echo $i $numjtot $numjptot
+namea=C2H2-${element}_transAmpTot_j${numjtot}_j${numjptot}
+namem=C2H2-${element}_transAmpM_j${numjtot}_j${numjptot}
+oo=C2H2-${element}_waveDeco_j${numjtot}_kei1_kep1
+oe=C2H2-${element}_waveDeco_j${numjtot}_kei1_kep2
+eo=C2H2-${element}_waveDeco_j${numjtot}_kei2_kep1
+ee=C2H2-${element}_waveDeco_j${numjtot}_kei2_kep2
+oop=C2H2-${element}_waveDeco_j${numjptot}_kei1_kep1
+oep=C2H2-${element}_waveDeco_j${numjptot}_kei1_kep2
+eop=C2H2-${element}_waveDeco_j${numjptot}_kei2_kep1
+eep=C2H2-${element}_waveDeco_j${numjptot}_kei2_kep2
+job=s_${element}_amp_${numjtot}_${numjptot}
+
+#
+#Create script
+awk -v v1=$job -v v2=$namea -v v3=$namem -v v4=$oo -v v5=$oe -v v6=$eo -v v7=$ee -v v8=$oop -v v9=$oep -v v10=$eop -v v11=$eep '{
+          if(NR==7) {print "#$ -N " v1 }
+            else {if (NR==25) {print "JOB="v2 }
+            else {if (NR==26) {print "JOB2="v3 }
+            else {if (NR==28) {print "cp "v4".dat $TMP/$JOB/"v4".dat" }
+            else {if (NR==29) {print "cp "v5".dat $TMP/$JOB/"v5".dat" }
+            else {if (NR==30) {print "cp "v6".dat $TMP/$JOB/"v6".dat" }
+            else {if (NR==31) {print "cp "v7".dat $TMP/$JOB/"v7".dat" }
+            else {if (NR==32) {print "cp "v8".dat $TMP/$JOB/"v8"p.dat" }
+            else {if (NR==33) {print "cp "v9".dat $TMP/$JOB/"v9"p.dat" }
+            else {if (NR==34) {print "cp "v10".dat $TMP/$JOB/"v10"p.dat" }
+            else {if (NR==35) {print "cp "v11".dat $TMP/$JOB/"v11"p.dat" }
+            else {print $0}}}}}}}}}}}}' $refqsub > $job
+#
+# fileNames input
+awk -v v1=$oo -v v2=$oe -v v3=$eo -v v4=$ee -v v5=$oop -v v6=$oep -v v7=$eop -v v8=$eep '{
+          if(NR==1) {print $v1".dat" } 
+            else {if(NR==1) {print $v1".dat" } 
+            else {if (NR==6) {print "   jtot="v2", kei="v3", kep="v4"," }
+            else {print $0}}}' $refvriinput > $namei.In
+
+# loop indices update
+ i=`expr $i + 1`
+#fi
+done
+
