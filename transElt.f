@@ -9,8 +9,6 @@ c
 c#######################################################################
 c#                                TODO                                 #
 c#######################################################################
-c#    In main : direct call to grabData                                #
-c#    Change crossAmp according to that                                #
 c#    Optimize by not computing trivial zeros + general optimization   #      
 c#    Add implicit none if possible                                    #
 c#######################################################################
@@ -25,7 +23,8 @@ c
       real(8), dimension(:,:,:), allocatable :: amp
       integer :: jStep, jpstep, lStep, eStep, epStep, nEig, nEigp, nR
       integer :: param(4,7), paramp(4,7), i, mTStep,iin
-      real(8), allocatable :: eig(:), eigp(:)
+      real(8), allocatable :: eig(:), eigp(:), rr(:), ww(:)
+      real(8), allocatable :: uuNew(:,:,:,:), uuNewp(:,:,:,:)
       integer, allocatable :: ke(:,:), kep(:,:) 
       character(14) :: name11, name12, name21, name22
       call reader
@@ -76,7 +75,15 @@ c
       allocate(kep(nEigp,2))
       
       allocate(amp(0:25,0:25+jTot,0:25))
+      allocate(rr(nR))
+      allocate(ww(nR))
+      allocate(uuNew(nEig,nR,0:25,0:25+jTot))
+      allocate(uuNewp(nEigp,nR,0:25,0:25+jpTot))
+c
+      call grabData(fileName,rr, ww, eig, ke, uuNew, nR, nEig,jtot)
+      call grabData(fileNamep,rr, ww, eigp, kep, uuNewp,nR,nEigp,jptot)
 
+      print*, rr(1:10)
       write(16,*) '             E',"             E'",'        Delta E',
      &'    <psi|D|psi>'
       write(17,*) '             E',"             E'",'        Delta E',
@@ -85,10 +92,10 @@ c
       write(16,*) eStep
       write(17,*) eStep
       do epStep = 1, nEigp
-      print*, estep,epstep
+c      print*, estep,epstep
          res = 0.d0
-         call crossAmp(dfloat(jTot),dfloat(jpTot),eStep,epStep,nR,nEig,
-     &   nEigp,amp,deltaE,eig, eigp, ke, kep,fileName,fileNamep)
+         call crossAmp(jTot,jpTot,eStep,epStep,nR,nEig,
+     &   nEigp,amp, rr, ww, uuNew, uuNewp)
          if (estep.eq.1 .and. epstep.eq.1) then
             print*, eig
             print*, eigp
@@ -104,11 +111,13 @@ c
                      jp = dfloat(jpStep)
                      tmp = tmp + amp(jStep, lStep,
      &     jpStep)*canalElt(dfloat(jTot), dfloat(jpTot), mTot, j, jp, l)
+                     print*, tmp
                   enddo
                enddo
             enddo
             tmp = tmp*dsqrt((2.d0*jpTot+1)*(2.d0*jTot+1))*(-1.d0)**mTot*
      &     f3j(dfloat(jpTot),1.d0, dfloat(jTot), -1.d0*mTot, 0.d0, mTot)
+      deltaE = eigp(epStep) - eig(eStep)
       if (dabs(tmp) .gt. 1.d-8) then
       write(17,'(4f15.8,i5)') eig(eStep), eigp(epStep),deltaE,tmp,mTStep
       end if
@@ -339,35 +348,23 @@ c
       end
 
       subroutine crossAmp(jTot, jpTot, e, ep, nR, nEig, nEigp, amp,
-     & deltaE, eig, eigp, ke, kep,fileName,fileNamep)
+     & rr, ww, uuNew, uuNewp)
 c#######################################################################
 c#  Computes the crossed terms F_{J,M,j,l}(R)*F_{J',M',j',l'}(R) and   #
 c#    sums them over R using the weights w(R) and the 1/R² factor.     #
 c#    Uses psi_{E,J,M} = 1/R*SUM_{j,l}Y_{J,M,j,l}*F_{E,J,M,j,l}(R)     #
 c#######################################################################
-      real(8), dimension(:), allocatable :: rr, ww
-      real(8), intent(inout) :: jTot, jpTot 
-      real(8), intent(out) :: amp(0:25,0:25+int(jTot),0:25), deltaE
-      real(8), allocatable :: uuNew(:,:,:,:), uuNewp(:,:,:,:)
-      integer, intent(inout) :: e, ep, nEig, nEigp
-      integer :: rStep, jStep, lStep, jpStep, nR
-      real(8), intent(inout) :: eig(nEig), eigp(nEigp)
-      integer ::  ke(nEig,2), kep(nEigp,2) 
-      character(20), intent(in) :: fileName,fileNamep
-c
-      allocate(rr(nR))
-      allocate(ww(nR))
-      allocate(uuNew(nEig,nR,0:25,0:25+int(jTot)))
-      allocate(uuNewp(nEigp,nR,0:25,0:25+int(jpTot)))
-c
-      call grabData(fileName,rr, ww, eig, ke, uuNew, nR, nEig,jtot)
-      call grabData(fileNamep,rr, ww, eigp, kep, uuNewp,nR,nEigp,jptot)
+      integer, intent(in)  :: e, ep, nEig, nEigp,nR,jTot,jpTot
+      real(8), intent(in)  :: rr(nR), ww(nR)
+      real(8), intent(out) :: amp(0:25,0:25+jTot,0:25)
+      real(8), intent(in)  :: uuNew(nEig,nR,0:25,0:25+jTot)
+      real(8), intent(in)  :: uuNewp(nEigp,nR,0:25,0:25+jpTot)
+      integer :: rStep, jStep, lStep, jpStep
 c
       amp = 0.d0
-c
-      write(30,*), eig(e), eigp(ep)
+c      write(30,*), eig(e), eigp(ep)
       do jStep = 0, 24
-         do lStep = abs(jStep-int(jTot)), jStep+int(jTot)
+         do lStep = abs(jStep-jTot), jStep+jTot
             do jpStep = abs(jStep-1), jStep+1,2
                do rStep = 1,nR
                   amp(jStep, lStep,jpStep) = amp(jStep, lStep,jpStep) +
@@ -378,26 +375,23 @@ c
             end do
          end do
       end do
-      write(30,*)
-      deltaE = eigp(ep)-eig(e)
+c      write(30,*)
 c
-      deallocate(rr, ww,uunew,uunewp)
       end subroutine
 
       subroutine grabData(fileName,rr,ww,eig,ke,uuNew,nR,nEig,jTot)
 c#######################################################################
 c#      Reads data from the 4 files with kei = 1,2 and kep = 1,2.      #
 c#######################################################################
-      integer, intent(in) :: nEig, nR
-      real(8) :: jTot
-      real(8), intent(inout) :: uuNew(nEig,nR,0:25,0:25+int(jTot))
+      integer, intent(in) :: nEig, nR, jTot
+      real(8), intent(inout) :: uuNew(nEig,nR,0:25,0:25+jTot)
       integer :: jStep, lStep, rStep, eStep, i, j, chStep, junk2, c
       integer, dimension(4,7) :: param
       integer, intent(inout) :: ke(nEig,2)
       character(len=4) :: junk1
       real(8), intent(inout) :: rr(nR), ww(nR), eig(nEig)
       integer :: index(nEig), ketmp(nEig,2), iin
-      real(8) :: eigtmp(nEig), uunewtmp(nEig,nR,0:25,0:25+int(jTot))
+      real(8) :: eigtmp(nEig), uunewtmp(nEig,nR,0:25,0:25+jTot)
       character(20) :: fileName
       character(14) :: name11, name12, name21, name22
       name11 = '_kei1_kep1.dat'
@@ -406,7 +400,7 @@ c#######################################################################
       name22 = '_kei2_kep2.dat'
 c
       iin=3
-      if (int(jTot) .ne. 0) then
+      if (jTot .ne. 0) then
          iin = 1
          open(11,file=trim(fileName) // trim(name11))
          open(12,file=fileName // name12)
@@ -437,7 +431,7 @@ c
             ke(c,1) = param(i,2)
             ke(c,2) = param(i,3)
             do jStep = 2-param(i,3), 24, 2
-               do lStep = abs(jStep-int(jTot)),jStep+int(jTot)
+               do lStep = abs(jStep-jTot),jStep+jTot
                   if (mod(param(i,2)+param(i,3),2) .eq. mod(lStep,2))
      & then
                      do rStep = 1,nR
