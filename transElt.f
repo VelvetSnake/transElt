@@ -21,6 +21,7 @@ c
       character(14) :: name11, name12, name21, name22
       call reader
 c
+      open(40)
       param = 0.d0
       paramp = 0.d0
       name11 = '_kei1_kep1.dat'
@@ -80,10 +81,6 @@ c
          res = 0.d0
          call crossAmp(dfloat(jTot),dfloat(jpTot),eStep,epStep,nR,nEig,
      &   nEigp,amp,deltaE,eig, eigp, ke, kep,fileName,fileNamep)
-         if (estep.eq.1 .and. epstep.eq.1) then
-            print*, eig
-            print*, eigp
-         end if
          do mTStep = -1*min(jTot,jpTot), min(jTot,jpTot)
          mTot = dfloat(mTStep)
          tmp = 0.d0
@@ -116,6 +113,7 @@ c
       close(17)
 
       deallocate(amp,eig,eigp,ke,kep)
+      close(40)
       end program
 c#######################################################################
 
@@ -363,7 +361,7 @@ c
                do rStep = 1,nR
                   amp(jStep, lStep,jpStep) = amp(jStep, lStep,jpStep) +
      & uuNew(e,rStep,jStep,lStep)*uuNewp(ep,rStep,jpStep,lStep)
-     & /rr(rStep)**2
+c     & /rr(rStep)**2
                end do
             write(30,*), jStep, jpStep, lStep, amp(jStep,lStep,jpStep)
             end do
@@ -455,6 +453,7 @@ c
       do i = iin,4
          close(10+i)
       end do
+      call maxValue(nEig,nR,int(jTot),uuNew)
       
       end subroutine
 c
@@ -698,3 +697,28 @@ c      write (6,input)
       return
       end
 
+      subroutine maxValue(nEig,nR,jTot,uuNew)
+      integer, intent(in) :: nEig, nR,jTot
+      real(8), intent(inout) :: uuNew(nEig,nR,0:25,0:25+jTot)
+      integer :: e, r, j, l, jm, lm, rm
+      real(8) :: mVal
+      do e = 1,nEig
+         mVal=0.d0
+         do j = 0,25
+            do l = abs(j-jTot), j+jTot
+               do r=1,nR
+                  if (dabs(uuNew(e,r,j,l)) .gt. mVal) then
+                     jm = j
+                     lm = l
+                     rm = r
+                     mVal = dabs(uuNew(e,r,j,l))
+                  end if
+               end do
+            end do
+         end do
+         uuNew(e,:,:,:) = 0.d0
+         uuNew(e,1,jm,lm) = 1.d0
+         write(40,*)e,jm,lm
+      end do
+      write(40,*)
+      end subroutine
